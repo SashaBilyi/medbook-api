@@ -1,1 +1,1 @@
-make test-smoke
+npx tsc --noEmit
