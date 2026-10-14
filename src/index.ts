@@ -1,7 +1,10 @@
 import Fastify from 'fastify';
+import { registerErrorHandler } from './api/error-handler.js';
 import { apiRoutes } from './api/routes.js';
 
 const app = Fastify({ logger: true });
+
+registerErrorHandler(app);
 
 app.get('/', async () => {
   return {
