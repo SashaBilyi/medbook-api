@@ -15,5 +15,5 @@
 
 **Перевірка (на реально запущеній системі):**
 
-- `make test-smoke` → результат: `Smoke test passed. Architecture and types are valid.` (перевірка `tsc` проходить успішно).
+- `npm run test:smoke` (або `node --run test:smoke`) → виконує `tsc --noEmit` без помилок, підтверджуючи валідність типів і структури.
 - Версія / version: `4dc08ea`
