@@ -9,6 +9,12 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e",
+    "test:coverage": "vitest run --coverage",
+    "mutation": "stryker run",
     "lint": "eslint \"src/**/*.ts\"",
     "format": "prettier --write \"src/**/*.ts\" \"*.md\"",
     "build": "tsc",
@@ -26,14 +32,18 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@types/node": "^26.6.3",
+    "@vitest/coverage-v8": "^5.0.5",
     "eslint": "^10.11.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.71.0"
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.5"
   },
   "lint-staged": {
     "src/**/*.ts": [
