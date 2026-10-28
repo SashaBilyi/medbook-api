@@ -13,3 +13,7 @@ yarn-error.log*
 
 .env
 .env.local
+
+coverage/
+reports/
+.stryker-tmp/
