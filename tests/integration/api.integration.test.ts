@@ -46,6 +46,7 @@ describe('Integration: API Routes + PostgreSQL', () => {
       payload: { scheduleId: 101, patientName: 'Іван Франко' },
     });
     expect(createRes.statusCode).toBe(201);
+    expect(createRes.json().status).toBe('confirmed');
 
     const replayRes = await app.inject({
       method: 'POST',
@@ -54,18 +55,23 @@ describe('Integration: API Routes + PostgreSQL', () => {
       payload: { scheduleId: 101, patientName: 'Іван Франко' },
     });
     expect(replayRes.statusCode).toBe(200);
+    expect(replayRes.json().id).toBe(createRes.json().id);
 
     const listRes = await app.inject({ method: 'GET', url: '/api/appointments' });
     expect(listRes.json()).toHaveLength(1);
   });
 
-  it('POST /api/appointments returns 400, 404, and 409 on invalid or conflicting requests', async () => {
+  it('POST /api/appointments returns structured 400, 404, and 409 error payloads', async () => {
     const noHeaderRes = await app.inject({
       method: 'POST',
       url: '/api/appointments',
       payload: { scheduleId: 101, patientName: 'Іван Франко' },
     });
     expect(noHeaderRes.statusCode).toBe(400);
+    expect(noHeaderRes.json()).toEqual({
+      error: 'Bad Request',
+      message: 'Header Idempotency-Key is required',
+    });
 
     const badBodyRes = await app.inject({
       method: 'POST',
@@ -74,6 +80,8 @@ describe('Integration: API Routes + PostgreSQL', () => {
       payload: { scheduleId: 101, patientName: 'А' },
     });
     expect(badBodyRes.statusCode).toBe(400);
+    expect(badBodyRes.json().error).toBe('Bad Request');
+    expect(badBodyRes.json().message).toContain('patientName');
 
     const notFoundRes = await app.inject({
       method: 'POST',
@@ -82,6 +90,10 @@ describe('Integration: API Routes + PostgreSQL', () => {
       payload: { scheduleId: 999, patientName: 'Іван Франко' },
     });
     expect(notFoundRes.statusCode).toBe(404);
+    expect(notFoundRes.json()).toEqual({
+      error: 'Not Found',
+      message: 'Schedule slot not found',
+    });
 
     await app.inject({
       method: 'POST',
@@ -97,20 +109,32 @@ describe('Integration: API Routes + PostgreSQL', () => {
       payload: { scheduleId: 101, patientName: 'Другий Пацієнт' },
     });
     expect(conflictRes.statusCode).toBe(409);
+    expect(conflictRes.json()).toEqual({
+      error: 'Conflict',
+      message: 'This schedule slot is already booked',
+    });
   });
 
-  it('PATCH /api/appointments/:id/cancel cancels appointment and handles errors', async () => {
+  it('PATCH /api/appointments/:id/cancel frees slot and protects rebooked slot on duplicate cancel', async () => {
     const badIdRes = await app.inject({
       method: 'PATCH',
       url: '/api/appointments/not-a-number/cancel',
     });
     expect(badIdRes.statusCode).toBe(400);
+    expect(badIdRes.json()).toEqual({
+      error: 'Bad Request',
+      message: 'Invalid appointment ID',
+    });
 
     const missingRes = await app.inject({
       method: 'PATCH',
       url: '/api/appointments/999/cancel',
     });
     expect(missingRes.statusCode).toBe(404);
+    expect(missingRes.json()).toEqual({
+      error: 'Not Found',
+      message: 'Appointment not found',
+    });
 
     await app.inject({
       method: 'POST',
@@ -126,10 +150,25 @@ describe('Integration: API Routes + PostgreSQL', () => {
     expect(cancelRes.statusCode).toBe(200);
     expect(cancelRes.json().status).toBe('cancelled');
 
+    const rebookRes = await app.inject({
+      method: 'POST',
+      url: '/api/appointments',
+      headers: { 'idempotency-key': 'int-rebook-2' },
+      payload: { scheduleId: 102, patientName: 'Богдан Хмельницький' },
+    });
+    expect(rebookRes.statusCode).toBe(201);
+
     const secondCancelRes = await app.inject({
       method: 'PATCH',
       url: '/api/appointments/1/cancel',
     });
     expect(secondCancelRes.statusCode).toBe(200);
+    expect(secondCancelRes.json().status).toBe('cancelled');
+
+    const schedulesRes = await app.inject({ method: 'GET', url: '/api/schedules' });
+    const slot102 = schedulesRes
+      .json()
+      .find((s: { id: number; isBooked: boolean }) => s.id === 102);
+    expect(slot102?.isBooked).toBe(true);
   });
 });

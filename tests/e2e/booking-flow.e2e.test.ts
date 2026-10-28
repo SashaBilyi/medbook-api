@@ -47,11 +47,26 @@ describe('E2E: Full Patient Booking & Cancellation Lifecycle over HTTP', () => {
       body: JSON.stringify({ scheduleId: 103, patientName: 'Григорій Сковорода' }),
     });
     expect(conflictRes.status).toBe(409);
+    const conflictBody = (await conflictRes.json()) as { error: string; message: string };
+    expect(conflictBody).toEqual({
+      error: 'Conflict',
+      message: 'This schedule slot is already booked',
+    });
 
     const cancelRes = await fetch(
       `${baseUrl}/api/appointments/${createdAppointment.id}/cancel`,
       { method: 'PATCH' },
     );
     expect(cancelRes.status).toBe(200);
+
+    const rebookRes = await fetch(`${baseUrl}/api/appointments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': 'e2e-journey-key-3',
+      },
+      body: JSON.stringify({ scheduleId: 103, patientName: 'Григорій Сковорода' }),
+    });
+    expect(rebookRes.status).toBe(201);
   });
 });
