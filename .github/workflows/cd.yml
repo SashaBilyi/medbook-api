@@ -25,31 +25,31 @@ jobs:
           npm run build
 
       - name: Step 1 - Blocking Schema Migrations (Expand only)
-        if: ${{ secrets.STAGING_DATABASE_URL != '' }}
+        if: secrets.STAGING_DATABASE_URL != ''
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: npm run db:migrate:schema
 
       - name: Step 2 - Non-blocking Data Backfill Migrations
-        if: ${{ secrets.STAGING_DATABASE_URL != '' }}
+        if: secrets.STAGING_DATABASE_URL != ''
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: npm run db:migrate:data
 
       - name: Step 3 - Separate Concurrent Index Creation
-        if: ${{ secrets.STAGING_DATABASE_URL != '' }}
+        if: secrets.STAGING_DATABASE_URL != ''
         env:
           DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
         run: npm run db:migrate:indexes
 
       - name: Trigger Stage Deployment (Blue-Green Release)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
+        if: secrets.RENDER_DEPLOY_HOOK_URL != ''
         run: |
           curl -fsSL -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
           echo "Triggered staging deployment for commit ${{ github.sha }}"
 
       - name: Verify Public Stage Readiness (/api/health & /api/version)
-        if: ${{ secrets.STAGING_APP_URL != '' }}
+        if: secrets.STAGING_APP_URL != ''
         run: |
           echo "Waiting for Blue-Green readiness check on ${{ secrets.STAGING_APP_URL }}..."
           for i in {1..18}; do

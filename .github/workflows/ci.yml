@@ -40,6 +40,10 @@ jobs:
         run: |
           MSG=$(git log -1 --pretty=%s)
           echo "Checking latest commit message: $MSG"
+          if echo "$MSG" | grep -Eq "^Merge "; then
+            echo "Skipping check for merge commit"
+            exit 0
+          fi
           if ! echo "$MSG" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .+'; then
             echo "::error::Commit message '$MSG' does not follow Conventional Commits format!"
             exit 1
