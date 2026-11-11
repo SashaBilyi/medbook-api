@@ -1,31 +1,74 @@
-# Специфікація: MedBook API (Завдання 2 - Дані та БД)
+# (Лабораторна робота №4)
 
-## 1. Основні сценарії та очікувана поведінка
+## 1. Мета та архітектурний контекст
 
-1. **Перегляд розкладу (`GET /schedules`):** Повертає список доступних слотів разом з інформацією про лікаря (ім'я, спеціалізація). Повинен виконуватися одним запитом через `JOIN` (без проблеми N+1).
-2. **Бронювання прийому (`POST /appointments`):** Пацієнт передає `patientId`, `scheduleId` та заголовок `Idempotency-Key`. Система в транзакції перевіряє, чи слот вільний (`isBooked = false`), позначає його зайнятим і створює запис прийому зі статусом `confirmed`.
-3. **Скасування прийому (`PATCH /appointments/:id/cancel`):** Переводить прийом у статус `cancelled` та звільняє слот у розкладі (`isBooked = false`) в межах однієї транзакції.
+Забезпечити автоматизований контроль якості коду (Continuous Integration), жорстке блокування злиття неперевірених змін у основну гілку (`main`), безпечну еволюцію схеми бази даних без блокування клієнтських запитів (Zero-Downtime Migrations) та безшовне розгортання на публічне staging-середовище (Continuous Delivery за схемою Blue-Green).
 
-## 2. Схема БД (PostgreSQL + Drizzle ORM)
+---
 
-- **`doctors`**: `id` (serial PK), `name` (text, not null), `specialization` (text, not null).
-- **`schedules`**: `id` (serial PK), `doctor_id` (int FK -> doctors.id), `slot_time` (timestamp, not null), `is_booked` (boolean, default false).
-- **`appointments`**: `id` (serial PK), `schedule_id` (int FK -> schedules.id), `patient_name` (text, not null), `status` (text: `confirmed` | `cancelled`), `idempotency_key` (text, unique, not null), `created_at` (timestamp).
+## 2. Конвеєр Continuous Integration (`.github/workflows/ci.yml`)
 
-## 3. Ключові запити та захист від N+1
+Конвеєр автоматично запускається на події `pull_request` та `push` у гілки `main` / `master`. Усі перевірки виконуються в ізольованому середовищі `ubuntu-latest` із піднятим сервісним контейнером **PostgreSQL 16**.
 
-- Вибірка слотів: `SELECT s.*, d.name, d.specialization FROM schedules s INNER JOIN doctors d ON s.doctor_id = d.id`.
-- Бронювання: `SELECT ... FOR UPDATE` на рядок `schedules` у транзакції для блокування конкурентних запитів (race condition).
+### Етапи перевірки (Job: `Lint, Build, Migrate & Test`):
 
-## 4. Сценарії помилок та стійкість (Resilience)
+1. **Conventional Commits Check:**
+   - Перевіряє останнє повідомлення коміту на відповідність стандарту `type(scope): description` (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`).
+   - Технічні коміти злиття (`Merge ...`) автоматично пропускаються для коректної роботи GitHub Pull Requests.
+2. **Code Formatting & Linting:**
+   - `npm run format:check` (Prettier) — перевірка єдиного стилю форматування.
+   - `npm run lint` (ESLint) — статичний аналіз коду та перевірка правил безпеки/якості (зокрема контроль `no-console` у бізнес-логіці).
+3. **Typecheck & Build:**
+   - `npm run build` — перевірка типів TypeScript та компіляція проєкту у директорію `dist/`.
+4. **Перевірка міграцій та Seeding на чистій БД:**
+   - Послідовний прогін трьох фаз міграцій (`db:migrate:schema`, `db:migrate:data`, `db:migrate:indexes`) та тестового наповнення (`db:seed`) на тимчасовому контейнері PostgreSQL.
+5. **Automated Testing:**
+   - Запуск автоматизованих тестів (`npm test` / `npm run test:smoke`) із перевіркою роботи API та бази даних.
 
-- `400 Bad Request` — невалідне тіло запиту або відсутній `Idempotency-Key` (валідація Fastify JSON Schema).
-- `409 Conflict` — слот уже заброньовано іншим пацієнтом.
-- `200 OK` (при повторному запиті з тим самим `Idempotency-Key`) — повертає раніше створений запис без дублювання в БД.
-- `503 Service Unavailable` — збій підключення до БД після 3 спроб автоматичного повтору (retry з exponential backoff).
+---
 
-## 5. Критерії прийняття (Acceptance Criteria)
+## 3. Політика захисту гілок (Branch Protection / GitHub Rulesets)
 
-1. Сценарії спочатку працюють на статичних даних (зафіксовано окремим комітом), потім — на PostgreSQL + Drizzle ORM.
-2. Відсутні N+1 запити при отриманні розкладу з лікарями.
-3. Конкурентне або повторне бронювання не створює дублів (транзакції + ідемпотентність).
+Для гілки `main` активовано правило **Ruleset (`Active`)** із наступними обмеженнями:
+
+- **Require a pull request before merging:** прямі пуші у `main` заборонені; усі зміни вносяться виключно через Pull Request.
+- **Require status checks to pass:** злиття PR технічно заблоковане до успішного завершення перевірки `Lint, Build, Migrate & Test`.
+- **Require branches to be up to date before merging:** перед злиттям гілка PR повинна містити актуальний стан `main`.
+
+---
+
+## 4. Стратегія міграцій бази даних без простою (Zero-Downtime Migrations)
+
+Запуск міграцій винесено зі старту HTTP-сервера (`npm start` виконує лише `node dist/index.js`). Це запобігає падінню Readiness-перевірок під час тривалих операцій у БД та стану _CrashLoopBackOff_.
+
+Усі зміни в БД проєктуються за патерном **Expand and Contract** і розділені на 3 окремі ідемпотентні кроки:
+
+1. **Крок 1 — Структурні міграції (`npm run db:migrate:schema` / `src/db/migrate-schema.ts`):**
+   - Виконує лише безпечні DDL-операції розширення (додавання нових таблиць та nullable-колонок).
+   - Використовує жорсткий таймаут очікування блокування (`SET LOCAL lock_timeout = '5s'`), щоб у разі конкуренції за таблицю міграція безпечно перервалася, не вишиковуючи чергу запитів від клієнтів.
+2. **Крок 2 — Пакетне оновлення даних (`npm run db:migrate:data` / `src/db/migrate-data.ts`):**
+   - Виконує бекфіл (заповнення) даних невеликими транзакційними батчами без глобального блокування таблиць.
+   - Тестові дані (`src/db/seed.ts`) повністю відокремлені від міграцій і не виконуються у CD-пайплайні.
+3. **Крок 3 — Неблокуюча побудова індексів (`npm run db:migrate:indexes` / `src/db/migrate-indexes.ts`):**
+   - Виконується поза межами транзакційного блоку через директиву `CREATE INDEX CONCURRENTLY IF NOT EXISTS`.
+   - Дозволяє PostgreSQL будувати індекси паралельно з читанням та записом даних у таблицю.
+
+---
+
+## 5. Конвеєр Continuous Delivery та Blue-Green Deployment (`.github/workflows/cd.yml`)
+
+Конвеєр автоматично запускається після кожного успішного злиття PR у гілку `main`.
+
+### Алгоритм розгортання на публічний Stage (Render):
+
+1. **Збірка артефакту:** Встановлення чистих залежностей (`npm ci`) та компіляція TypeScript.
+2. **Виконання Zero-Downtime міграцій на хмарній БД:**
+   - CD-воркфлоу підключається до Managed PostgreSQL на Render через захищене з'єднання (`?sslmode=require`) і послідовно виконує `db:migrate:schema`, `db:migrate:data` та `db:migrate:indexes`.
+   - Поточна (стара) версія веб-сервісу продовжує обслуговувати користувачів, оскільки зміни у схемі є зворотно сумісними.
+3. **Тригер Blue-Green деплою:**
+   - Після успішних міграцій GitHub Actions викликає **Render Deploy Hook** (`POST` запит).
+   - Автовідправка при пуші (Auto-Deploy) на боці Render вимкнена, щоб гарантувати запуск деплою виключно після завершення міграцій БД.
+4. **Перемикання трафіку та верифікація релізу:**
+   - Render піднімає новий інстанс паралельно зі старим і очікує код `200 OK` від ендпоінта готовності `/api/health` (Readiness Probe).
+   - Лише після успішної відповіді `/api/health` трафік перемикається на нову версію, а старий контейнер зупиняється.
+   - CD-конвеєр опитує публічний `/api/health` та виводить результат `/api/version` для підтвердження актуального `commitSha`.
