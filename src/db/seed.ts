@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { sql } from 'drizzle-orm';
 import { db, queryClient } from './index.js';
 import { doctors, schedules } from './schema.js';

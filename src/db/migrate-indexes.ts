@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { queryClient } from './index.js';
 
 async function migrateIndexes() {
