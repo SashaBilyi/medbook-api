@@ -1,19 +1,19 @@
-.PHONY: setup lint format build test-smoke
+.PHONY: test test-unit test-integration test-e2e coverage mutation
 
-setup:
-	npm install
-	npx husky init
+test:
+	npm test
 
-lint:
-	npx eslint "src/**/*.ts"
+test-unit:
+	npm run test:unit
 
-format:
-	npx prettier --write "src/**/*.ts" "*.md"
+test-integration:
+	npm run test:integration
 
-build:
-	npx tsc
+test-e2e:
+	npm run test:e2e
 
-test-smoke:
-	@echo "Running minimal smoke test..."
-	npx tsc --noEmit
-	@echo "Smoke test passed. Architecture and types are valid."
+coverage:
+	npm run test:coverage
+
+mutation:
+	npm run mutation
