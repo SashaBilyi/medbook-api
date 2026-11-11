@@ -9,7 +9,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['src/index.ts', 'src/db/seed.ts', 'src/db/index.ts'],
+      exclude: [
+        'src/index.ts',
+        'src/db/seed.ts',
+        'src/db/index.ts',
+        'src/db/migrate-schema.ts',
+        'src/db/migrate-data.ts',
+        'src/db/migrate-indexes.ts',
+      ],
     },
   },
 });

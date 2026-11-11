@@ -24,6 +24,11 @@ describe('Integration: API Routes + PostgreSQL', () => {
     const healthRes = await app.inject({ method: 'GET', url: '/api/health' });
     expect(healthRes.statusCode).toBe(200);
     expect(healthRes.json().status).toBe('ok');
+
+    const versionRes = await app.inject({ method: 'GET', url: '/api/version' });
+    expect(versionRes.statusCode).toBe(200);
+    expect(versionRes.json().service).toBe('medbook-api');
+    expect(versionRes.json().commitSha).toBeDefined();
   });
 
   it('GET /api/doctors and GET /api/schedules return seeded rows with INNER JOIN', async () => {

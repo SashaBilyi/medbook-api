@@ -16,6 +16,7 @@ export function buildApp(logger = true): FastifyInstance {
         'GET    /api/doctors',
         'GET    /api/schedules',
         'GET    /api/appointments',
+        'GET    /api/version',
         'POST   /api/appointments',
         'PATCH  /api/appointments/:id/cancel',
       ],

@@ -1,0 +1,76 @@
+name: CI Quality Gate
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  verify:
+    name: Lint, Build, Migrate & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medbook
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5433/medbook
+      COMMIT_SHA: ${{ github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Conventional Commits
+        run: |
+          MSG=$(git log -1 --pretty=%s)
+          echo "Checking latest commit message: $MSG"
+          if ! echo "$MSG" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9_-]+\))?!?: .+'; then
+            echo "::error::Commit message '$MSG' does not follow Conventional Commits format!"
+            exit 1
+          fi
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code formatting (Prettier)
+        run: npm run format:check
+
+      - name: Run linter (ESLint)
+        run: npm run lint
+
+      - name: Typecheck & Build TypeScript
+        run: |
+          npm run test:smoke
+          npm run build
+
+      - name: Run Zero-Downtime Migrations (Schema -> Data -> Concurrent Indexes)
+        run: |
+          npm run db:migrate:schema
+          npm run db:migrate:data
+          npm run db:migrate:indexes
+          npm run db:seed
+
+      - name: Run Unit, Integration & E2E tests
+        run: npm test
