@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "API для керування розкладом лікарів та записом пацієнтів на прийом. Побудовано з фокусом на строгі інженерні стандарти, якість коду та автоматизацію процесів (згідно із завданням лабораторної роботи).",
   "main": "src/index.ts",
+  "workspaces": [
+    "packages/*"
+  ],
   "directories": {
     "doc": "docs"
   },
@@ -13,17 +16,22 @@
     "db:migrate:data": "tsx src/db/migrate-data.ts",
     "db:migrate:indexes": "tsx src/db/migrate-indexes.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed:load": "tsx scripts/seed-load.ts",
+    "db:analyze": "tsx scripts/db-analyze.ts",
+    "load": "npm run build && tsx scripts/load-test.ts",
+    "profile": "npm run build && tsx scripts/profile.ts",
+    "lighthouse": "npm run build && tsx scripts/lighthouse-audit.ts",
     "test": "vitest run",
-    "test:unit": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit packages/booking-core/tests",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "vitest run tests/e2e",
     "test:coverage": "vitest run --coverage",
     "mutation": "stryker run",
-    "lint": "eslint \"src/**/*.ts\"",
-    "format": "prettier --write \"src/**/*.ts\" \"*.md\"",
-    "format:check": "prettier --check \"src/**/*.ts\"",
-    "build": "tsc",
-    "test:smoke": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"packages/*/src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"packages/*/src/**/*.ts\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"packages/*/src/**/*.ts\"",
+    "build": "npm run build --workspace=@medbook/booking-core && tsc",
+    "test:smoke": "npm run build --workspace=@medbook/booking-core && tsc --noEmit",
     "prepare": "husky"
   },
   "keywords": [],
@@ -31,6 +39,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@medbook/booking-core": "*",
     "drizzle-orm": "^0.45.3",
     "fastify": "^5.12.5",
     "postgres": "^3.4.9"
@@ -39,10 +48,13 @@
     "@eslint/js": "^10.0.1",
     "@stryker-mutator/core": "^10.1.1",
     "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@types/autocannon": "^7.12.7",
     "@types/node": "^26.6.3",
     "@vitest/coverage-v8": "^5.0.5",
+    "autocannon": "^9.0.0",
     "eslint": "^10.11.0",
     "husky": "^9.1.7",
+    "lighthouse": "^13.6.0",
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
@@ -51,7 +63,7 @@
     "vitest": "^5.0.5"
   },
   "lint-staged": {
-    "src/**/*.ts": [
+    "{src,packages/*/src}/**/*.ts": [
       "eslint --fix",
       "prettier --write"
     ],
