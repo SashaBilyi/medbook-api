@@ -1,9 +1,10 @@
+import { BookingDomainError } from '@medbook/booking-core';
 import type { FastifyInstance } from 'fastify';
 import { BusinessError } from '../db/resilience.js';
 
 export function registerErrorHandler(app: FastifyInstance) {
   app.setErrorHandler((error, request, reply) => {
-    if (error instanceof BusinessError) {
+    if (error instanceof BusinessError || error instanceof BookingDomainError) {
       const errorTitles: Record<number, string> = {
         400: 'Bad Request',
         404: 'Not Found',

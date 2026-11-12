@@ -6,7 +6,7 @@
   "mutate": [
     "src/db/resilience.ts",
     "src/api/error-handler.ts",
-    "src/services/appointments.service.ts"
+    "packages/booking-core/src/booking-module.ts"
   ],
   "vitest": {
     "configFile": "vitest.config.ts"

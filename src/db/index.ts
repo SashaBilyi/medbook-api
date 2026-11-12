@@ -6,7 +6,7 @@ const connectionString =
   process.env.DATABASE_URL ?? 'postgres://postgres:postgres@localhost:5433/medbook';
 
 export const queryClient = postgres(connectionString, {
-  max: 10,
+  max: Number(process.env.DB_POOL_MAX ?? 20),
   connect_timeout: 5,
 });
 
