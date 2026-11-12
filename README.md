@@ -1,29 +1,34 @@
 # MedBook API
 
-API для керування розкладом лікарів та записом пацієнтів на прийом. Побудовано з фокусом на строгі інженерні стандарти, якість коду та автоматизацію процесів.
+API для керування розкладом лікарів та записом пацієнтів на прийом. Побудовано з фокусом на строгі інженерні стандарти, якість коду, продуктивність та модульну архітектуру з Dependency Injection.
 
 ## Технологічний стек
 
-- **Runtime:** Node.js
-- **Framework:** Fastify
-- **Database:** PostgreSQL + Drizzle ORM
-- **Quality Assurance:** ESLint, Prettier, Husky, lint-staged
+- **Runtime:** Node.js (TypeScript, ESM)
+- **Framework:** Fastify 5
+- **Database:** PostgreSQL 16 + Drizzle ORM
+- **Domain Library (DI):** `@medbook/booking-core` (`packages/booking-core`, нуль інфраструктурних залежностей)
+- **Performance & QA:** autocannon, Node.js V8 `--cpu-prof`, Google Lighthouse, Vitest, Stryker, ESLint, Prettier, Husky
 
 ## Запуск та розробка
 
-Проєкт використовує вбудовані механізми сценаріїв Node.js (`package.json` scripts) для управління життєвим циклом та кросплатформної автоматизації.
-
 ### Доступні команди:
 
-- `npm install` — встановлення залежностей та автоматична ініціалізація git-hooks (через скрипт `prepare`).
-- `npm run lint` (або `node --run lint`) — перевірка коду лінтером (статичний аналіз).
-- `npm run format` (або `node --run format`) — форматування коду за допомогою Prettier.
-- `npm run build` (або `node --run build`) — компіляція та збірка TypeScript.
-- `npm run test:smoke` (або `node --run test:smoke`) — запуск базових smoke-тестів (перевірка типів та валідності архітектури).
+- `npm install` — встановлення залежностей, лінкування workspace `@medbook/booking-core` та ініціалізація git-hooks.
+- `npm run lint` — статичний аналіз `src/` та `packages/booking-core/src/` (включно з контролем меж DI).
+- `npm run format` / `npm run format:check` — форматування коду Prettier.
+- `npm run build` — збірка `@medbook/booking-core` (`.js` + `.d.ts`) та компіляція `medbook-api`.
+- `npm test` / `make test` — запуск Unit (включно з ізольованими тестами бібліотеки без БД), Integration та E2E тестів.
+- `npm run db:seed:load` / `make seed-load` — наповнення БД реалістичним датасетом (`100` лікарів, `25 000` слотів, `15 000` записів).
+- `npm run load` / `make load` — відтворюваний навантажувальний прогін (4 сценарії × 5 повторів, `p50/p95/p99`, розкид, RAM, `/version`).
+- `npm run profile` / `make profile` — V8 CPU-профілювання (CPU vs Wait), телеметрія Event Loop/RAM та аналіз БД (`EXPLAIN ANALYZE`, індекси, кількість рядків).
+- `npm run lighthouse` / `make lighthouse` — аудит фронтенд-сторінки `GET /ui` через Google Lighthouse та Web Vitals.
 
 ## Структура проєкту
 
-- `/src` — вихідний код застосунку (розбитий на модулі: `users`, `appointments`, `schedules`).
-- `/standards` — внутрішні стандарти якості проєкту (наприклад, Definition of Done).
-- `/docs/adr` — Architectural Decision Records (документація ключових архітектурних рішень).
-- `/ai` — збережені логи промптів та взаємодії з ШІ (для аудиту рішень).
+- `/packages/booking-core` — винесена доменна бібліотека розкладу й бронювань із чистим DI та типізованим публічним контрактом TS.
+- `/src` — HTTP-маршрути (`api/`, включно з `GET /ui` та `GET /version`), PostgreSQL/Drizzle адаптери (`adapters/`), Composition Root (`container.ts`), міграції БД (`db/`).
+- `/scripts` — відтворювані скрипти наповнення БД, навантаження, V8-профілювання, `EXPLAIN ANALYZE` та Lighthouse.
+- `/standards` — внутрішні стандарти якості проєкту (`DoD.md`).
+- `/docs/adr` — Architectural Decision Records (MADR, `0001`–`0005`).
+- `/ai` — аудит залучення ШІ та перевірки рішень.
