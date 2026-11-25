@@ -22,15 +22,18 @@ jobs:
       - name: Verify Public Stage Readiness (/api/health & /api/version)
         if: env.APP_URL != ''
         run: |
-          echo "Waiting for container startup migrations and Blue-Green readiness check on ${{ secrets.STAGING_APP_URL }}..."
+          BASE_URL="${{ secrets.STAGING_APP_URL }}"
+          BASE_URL="${BASE_URL%/}"
+          echo "Waiting for container startup migrations and Blue-Green readiness check on $BASE_URL..."
           for i in {1..24}; do
-            STATUS=$(curl -s -o /dev/null -w "\%{http_code}" "${{ secrets.STAGING_APP_URL }}/api/health" || true)
+            STATUS=$(curl -sL --max-time 15 -o /dev/null -w "%{http_code}" "$BASE_URL/api/health" || true)
+            echo "Attempt $i/24: HTTP $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "Stage healthcheck is OK (200)!"
-              curl -fsSL "${{ secrets.STAGING_APP_URL }}/api/version"
+              curl -fsSL "$BASE_URL/api/version"
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Staging healthcheck timed out!"
+          echo "::error::Staging healthcheck timed out! Last HTTP status: $STATUS"
           exit 1
