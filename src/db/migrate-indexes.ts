@@ -16,6 +16,17 @@ async function migrateIndexes() {
     ON appointments (schedule_id);
   `);
 
+  await queryClient.unsafe(`
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_schedules_doctor_available_slot_time
+    ON schedules (doctor_id, slot_time)
+    WHERE is_booked = false;
+  `);
+
+  await queryClient.unsafe(`
+    CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_appointments_status_created_at
+    ON appointments (status, created_at DESC);
+  `);
+
   console.log('Concurrent index creation completed successfully.');
   await queryClient.end();
 }

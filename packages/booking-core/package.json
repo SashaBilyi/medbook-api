@@ -1,0 +1,20 @@
+{
+  "name": "@medbook/booking-core",
+  "version": "1.0.0",
+  "description": "Standalone domain library for MedBook scheduling and appointment booking with pure Dependency Injection and zero infrastructure dependencies.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {}
+}

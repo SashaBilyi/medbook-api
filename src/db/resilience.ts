@@ -1,3 +1,5 @@
+import { BookingDomainError } from '@medbook/booking-core';
+
 export class BusinessError extends Error {
   public readonly statusCode: number;
 
@@ -19,7 +21,7 @@ export async function withRetry<T>(
     try {
       return await operation();
     } catch (error) {
-      if (error instanceof BusinessError) {
+      if (error instanceof BusinessError || error instanceof BookingDomainError) {
         throw error;
       }
 

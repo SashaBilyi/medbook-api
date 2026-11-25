@@ -29,6 +29,36 @@ describe('Integration: API Routes + PostgreSQL', () => {
     expect(versionRes.statusCode).toBe(200);
     expect(versionRes.json().service).toBe('medbook-api');
     expect(versionRes.json().commitSha).toBeDefined();
+    expect(versionRes.json().modules['@medbook/booking-core']).toBe('1.0.0');
+
+    const rootVersionRes = await app.inject({ method: 'GET', url: '/version' });
+    expect(rootVersionRes.statusCode).toBe(200);
+    expect(rootVersionRes.json().service).toBe('medbook-api');
+
+    const uiRes = await app.inject({ method: 'GET', url: '/ui' });
+    expect(uiRes.statusCode).toBe(200);
+    expect(uiRes.headers['content-type']).toContain('text/html');
+  });
+
+  it('GET /api/schedules supports doctorId, availableOnly, limit, and offset pagination headers', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/appointments',
+      headers: { 'idempotency-key': 'int-filter-1' },
+      payload: { scheduleId: 101, patientName: 'Іван Франко' },
+    });
+
+    const filteredRes = await app.inject({
+      method: 'GET',
+      url: '/api/schedules?doctorId=1&availableOnly=true&limit=1&offset=0',
+    });
+    expect(filteredRes.statusCode).toBe(200);
+    expect(filteredRes.headers['x-limit']).toBe('1');
+    expect(filteredRes.headers['x-offset']).toBe('0');
+    const filtered = filteredRes.json() as Array<{ id: number; isBooked: boolean }>;
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.id).toBe(102);
+    expect(filtered[0]?.isBooked).toBe(false);
   });
 
   it('GET /api/doctors and GET /api/schedules return seeded rows with INNER JOIN', async () => {

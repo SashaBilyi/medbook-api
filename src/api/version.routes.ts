@@ -1,3 +1,4 @@
+import { BOOKING_CORE_VERSION } from '@medbook/booking-core';
 import type { FastifyInstance } from 'fastify';
 
 export async function versionRoutes(app: FastifyInstance) {
@@ -14,6 +15,9 @@ export async function versionRoutes(app: FastifyInstance) {
       version: '1.0.0',
       commitSha,
       environment: process.env.NODE_ENV ?? 'development',
+      modules: {
+        '@medbook/booking-core': BOOKING_CORE_VERSION,
+      },
     };
   });
 }
