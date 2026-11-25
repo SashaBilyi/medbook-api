@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "start": "node dist/index.js",
+    "db:migrate:all": "npm run db:migrate:schema && npm run db:migrate:data && npm run db:migrate:indexes",
+    "start": "npm run db:migrate:all && node dist/index.js",
     "db:migrate:schema": "tsx src/db/migrate-schema.ts",
     "db:migrate:data": "tsx src/db/migrate-data.ts",
     "db:migrate:indexes": "tsx src/db/migrate-indexes.ts",
